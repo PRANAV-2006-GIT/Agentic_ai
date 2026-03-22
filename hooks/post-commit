@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Get commit information
+COMMIT_HASH=$(git rev-parse HEAD)
+COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+APP_ID=$(basename "$(pwd)")
+
+# Check if commit message contains "no sync" (case insensitive)
+if echo "$COMMIT_MESSAGE" | grep -iq "no sync"; then
+    echo "Skipping sync signal creation due to 'no sync' in commit message"
+    exit 0
+fi
+
+# Create .sync directory if it doesn't exist
+mkdir -p .sync
+
+# Create signal file
+SIGNAL_FILE=".sync/signal_${COMMIT_HASH}.json"
+
+# Create JSON content with proper escaping
+python3 << PYTHON_EOF > "$SIGNAL_FILE"
+import json
+import sys
+
+data = {
+    "commit_id": "$COMMIT_HASH",
+    "commit_message": """$COMMIT_MESSAGE""",
+    "timestamp": "$TIMESTAMP",
+    "app_id": "$APP_ID"
+}
+
+print(json.dumps(data, indent=2, ensure_ascii=False))
+PYTHON_EOF
+
